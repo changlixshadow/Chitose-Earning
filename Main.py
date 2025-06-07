@@ -1,14 +1,13 @@
-
 import os
 import json
 import random
 from flask import Flask, request
 from telegram import (
-    Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
+    Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
 )
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, filters,
-    CallbackQueryHandler, ContextTypes
+    CallbackQueryHandler, ContextTypes, ConversationHandler
 )
 from telegram.constants import ParseMode
 
@@ -19,12 +18,14 @@ START_IMAGE = "https://telegra.ph/file/050a20dace942a60220c0-6afbc023e43fad29c7.
 ABOUT_IMAGE = "https://telegra.ph/file/9d18345731db88fff4f8c-d2b3920631195c5747.jpg"
 HELP_IMAGE = "https://telegra.ph/file/e6ec31fc792d072da2b7e-54e7c7d4c5651823b3.jpg"
 
-app = Flask(__name__)
-bot_app = Application.builder().token(TOKEN).build()
-
 USERS_FILE = "users.json"
 CODES_FILE = "codes.json"
 SHORTENERS_FILE = "shorteners.json"
+
+ASK_UPI = range(1)
+
+app = Flask(__name__)
+bot_app = Application.builder().token(TOKEN).build()
 
 # --- UTILITIES ---
 def load_json(file):
@@ -36,7 +37,7 @@ def save_json(file, data):
 def get_user(user_id):
     users = load_json(USERS_FILE)
     if str(user_id) not in users:
-        users[str(user_id)] = {"balance": 0.0, "used_codes": []}
+        users[str(user_id)] = {"balance": 0.0, "used_codes": [], "upi": None}
         save_json(USERS_FILE, users)
     return users[str(user_id)]
 
@@ -95,7 +96,7 @@ async def shortener(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     code = f"{random.randint(100000, 999999)}"
-    link = f"{shortener['api_url']}?code={code}"  # Simulated shortener URL
+    link = f"{shortener['api_url']}?code={code}"
     add_code(code)
     user_data['last_link'] = link
     update_user(user_id, user_data)
@@ -115,12 +116,26 @@ async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user(user_id)
     balance = user_data['balance']
     if 1 <= balance <= 10:
-        await context.bot.send_message(ADMIN_ID, f"🧾 Withdraw Request:\nUser: {user_id}\nAmount: ₹{balance:.2f}")
-        await update.message.reply_text("✅ Your request has been received. Payment will be sent in 24h via UPI.")
-        user_data['balance'] = 0
-        update_user(user_id, user_data)
+        await update.message.reply_text("🔢 Please enter your UPI ID to receive ₹{:.2f}".format(balance))
+        return ASK_UPI
     else:
         await update.message.reply_text("❗ You can only withdraw between ₹1 and ₹10.")
+        return ConversationHandler.END
+
+async def receive_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    upi = update.message.text.strip()
+    user_data = get_user(user_id)
+    user_data['upi'] = upi
+    amount = user_data['balance']
+    await context.bot.send_message(
+        ADMIN_ID,
+        f"🧾 Withdraw Request:\nUser: {user_id}\nAmount: ₹{amount:.2f}\nUPI ID: {upi}"
+    )
+    await update.message.reply_text("✅ Your request has been received. Payment will be sent in 24h via UPI.")
+    user_data['balance'] = 0
+    update_user(user_id, user_data)
+    return ConversationHandler.END
 
 async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     code = update.message.text.strip()
@@ -142,7 +157,13 @@ bot_app.add_handler(CommandHandler("start", start))
 bot_app.add_handler(CallbackQueryHandler(callback_handler))
 bot_app.add_handler(CommandHandler("shortener", shortener))
 bot_app.add_handler(CommandHandler("balance", balance))
-bot_app.add_handler(CommandHandler("withdraw", withdraw))
+
+withdraw_conv = ConversationHandler(
+    entry_points=[CommandHandler("withdraw", withdraw)],
+    states={ASK_UPI: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_upi)]},
+    fallbacks=[]
+)
+bot_app.add_handler(withdraw_conv)
 bot_app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_code))
 
 @app.route(f"/{TOKEN}", methods=["POST"])
