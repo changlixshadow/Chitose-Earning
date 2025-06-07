@@ -221,5 +221,6 @@ if __name__ == '__main__':
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 5000)),
         url_path=TOKEN,
-        webhook_url=f"https://your-render-url.onrender.com/{TOKEN}"  # Replace with your Render URL
+        webhook_url=f"https://chitose-earning.onrender.com/{TOKEN}"
+ # Replace with your Render URL
     )
