@@ -1,7 +1,7 @@
 import os
 import json
 import random
-from flask import Flask, request
+from flask import Flask
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 )
@@ -24,10 +24,6 @@ CODES_FILE = "codes.json"
 SHORTENERS_FILE = "shorteners.json"
 
 ASK_UPI = range(1)
-
-# --- FLASK APP & TELEGRAM BOT INIT ---
-app = Flask(__name__)
-bot_app = Application.builder().token(TOKEN).build()
 
 # --- JSON FILE HANDLING ---
 def load_json(file):
@@ -158,14 +154,12 @@ async def receive_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data['upi'] = upi
     amount = user_data['balance']
 
-    # Notify admin
     await context.bot.send_message(
         ADMIN_ID,
         f"🧾 <b>Withdraw Request</b>\n👤 User ID: {user_id}\n💵 Amount: ₹{amount:.2f}\n🏦 UPI: {upi}",
         parse_mode=ParseMode.HTML
     )
 
-    # Confirm to user
     await update.message.reply_text("✅ Request received. Payment will be made within 24h.")
     user_data['balance'] = 0
     update_user(user_id, user_data)
@@ -187,40 +181,23 @@ async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     update_user(user_id, user_data)
     await update.message.reply_text("✅ Code accepted. You earned ₹0.01!")
 
-# --- BOT SETUP ---
-bot_app.add_handler(CommandHandler("start", start))
-bot_app.add_handler(CallbackQueryHandler(callback_handler))
-bot_app.add_handler(CommandHandler("shortener", shortener))
-bot_app.add_handler(CommandHandler("balance", balance))
-
-# Withdraw conversation
-withdraw_conv = ConversationHandler(
-    entry_points=[CommandHandler("withdraw", withdraw)],
-    states={ASK_UPI: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_upi)]},
-    fallbacks=[]
-)
-bot_app.add_handler(withdraw_conv)
-
-# Code input (any plain text)
-bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_code))
-
-# --- FLASK ROUTES ---
-@app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), bot_app.bot)
-    bot_app.update_queue.put(update)
-    return "ok"
-
-@app.route("/")
-def index():
-    return "Bot is live!"
-
-# --- MAIN RUN ---
+# --- MAIN FUNCTION ---
 if __name__ == '__main__':
-    bot_app.run_webhook(
-        listen="0.0.0.0",
-        port=int(os.environ.get("PORT", 5000)),
-        url_path=TOKEN,
-        webhook_url=f"https://chitose-earning.onrender.com/{TOKEN}"
- # Replace with your Render URL
+    app = Application.builder().token(TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(callback_handler))
+    app.add_handler(CommandHandler("shortener", shortener))
+    app.add_handler(CommandHandler("balance", balance))
+
+    withdraw_conv = ConversationHandler(
+        entry_points=[CommandHandler("withdraw", withdraw)],
+        states={ASK_UPI: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_upi)]},
+        fallbacks=[]
     )
+    app.add_handler(withdraw_conv)
+
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_code))
+
+    print("Bot is running with polling...")
+    app.run_polling()
