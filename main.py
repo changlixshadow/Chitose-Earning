@@ -22,7 +22,7 @@ HELP_IMAGE = "https://telegra.ph/file/e6ec31fc792d072da2b7e-54e7c7d4c5651823b3.j
 
 USERS_FILE = "users.json"
 CODES_FILE = "codes.json"
-SHORTENER_LINKS_FILE = "shortener.json"
+SHORTENER_LINKS_FILE = "shorteners.json"
 
 ASK_UPI = range(1)
 
