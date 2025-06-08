@@ -1,5 +1,10 @@
 [
   {
-    "api_url": "https://linkcents.com/api?api=a3dede8bbc12f4bd0afd61cf1ac691f3545d5faf&url=yourdestinationlink.com&alias=CustomAlias"
+    "name": "LinkCents",
+    "api": "https://linkcents.com/api?api=a3dede8bbc12f4bd0afd61cf1ac691f3545d5faf&url={url}&alias={alias}"
+  },
+  {
+    "name": "Shortener2",
+    "api": "https://example.com/api?api=API_KEY&url={url}&alias={alias}"
   }
 ]
