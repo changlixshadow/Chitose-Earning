@@ -1,0 +1,7 @@
+{
+  "linkcents": {
+    "api_key": "a3dede8bbc12f4bd0afd61cf1ac691f3545d5faf",
+    "base_url": "https://linkcents.com",
+    "daily_limit_per_user": 10
+  }
+}
