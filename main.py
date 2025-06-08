@@ -9,7 +9,8 @@ from telegram.ext import (Application, CommandHandler, MessageHandler, filters,
 from telegram.constants import ParseMode
 
 # =============== CONFIG ===================
-TOKEN = "YOUR_TOKEN_HERE"
+TOKEN = "8006836827:AAERFD1tDpBDJhvKm_AHy20uSAzZdoRwbZc"
+
 ADMIN_ID = 5759232282  # Your Telegram ID
 
 START_IMAGE = "https://telegra.ph/file/050a20dace942a60220c0-6afbc023e43fad29c7.jpg"
