@@ -12,8 +12,8 @@ from telegram.ext import (
 from shortener_api import create_short_link
 
 # 🔧 Config - Update these!
-API_TOKEN = "8006836827:AAERFD1tDpBDJhvKm_AHy20uSAzZdoRwbZc"
-BOT_USERNAME = "Anime_fetch_robot"
+API_TOKEN = "7543065984:AAE-uDLt92tbZ2kHpgOhDyjZ-dBHTcKgHg0"
+BOT_USERNAME = "Chitose_robot"
 GROUP_ID = -1002453946876
 DAILY_LIMIT = 1  # Set user daily mission limit
 SHORTENERS = ["linkcents"]  # Add to rotate if multiple
