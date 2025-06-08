@@ -183,10 +183,10 @@ def webhook():
 def index(): return "Bot running"
 
 if __name__ == "__main__":
-    application = ApplicationBuilder().token(API_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(nav_cb))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, code_reply))
-    application.add_handler(MessageHandler(filters.Regex(r".+ .+"), withdraw_handler))
-    context = type("o", (), {"application": application, "bot": application.bot})
-    app.run("0.0.0.0", int(os.environ.get("PORT", 8080)))
+    application = ApplicationBuilder().token(API_TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(nav_cb))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, code_reply))
+    application.add_handler(MessageHandler(filters.Regex(r".+ .+"), withdraw_handler))
+
+    application.run_polling()
