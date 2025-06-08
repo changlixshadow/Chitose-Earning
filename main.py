@@ -14,7 +14,7 @@ from telegram.ext import (
 from shortener_api import create_short_link  # Your shortener integration
 
 # Config - Replace with your own values
-API_TOKEN = "7543065984:AAE-uDLt92tbZ2kHpgOhDyjZ-dBHTcKgHg0"
+API_TOKEN = "8006836827:AAERFD1tDpBDJhvKm_AHy20uSAzZdoRwbZc"
 ADMIN_IDS = [5759232282]  # Admin Telegram user IDs for notifications
 GROUP_ID = -1002453946876  # Group or channel ID to receive withdrawal requests
 BOT_USERNAME = "Chitose_robot"
