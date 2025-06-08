@@ -1,6 +1,7 @@
 import os
 import json
 import random
+import requests
 from telegram import (
     Update, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 )
@@ -23,8 +24,10 @@ USERS_FILE = "users.json"
 CODES_FILE = "codes.json"
 
 LINKCENT_API_KEY = "a3dede8bbc12f4bd0afd61cf1ac691f3545d5faf"
-LINKCENT_BASE_URL = "https://linkcents.com/api?api_key=" + LINKCENT_API_KEY + "&url="
+# Correct API URL for linkcents.com (per their docs)
+LINKCENT_API_BASE = "https://linkcents.com/api?api_key={}&url={}"
 
+# --- Utility JSON functions ---
 def load_json(file):
     return json.load(open(file)) if os.path.exists(file) else {}
 
@@ -52,8 +55,7 @@ def is_code_used(code):
     codes = load_json(CODES_FILE)
     return code in codes
 
-# --- BUTTONS ---
-
+# --- Button Markups ---
 def main_buttons():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📢 About", callback_data="about"),
@@ -69,18 +71,23 @@ def about_help_buttons():
          InlineKeyboardButton("❌ Close", callback_data="close")]
     ])
 
-# --- START ---
-
+# --- /start command ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_photo(
         photo=START_IMAGE,
-        caption="<b>🎉 Welcome to Earning Bot!</b>\nEarn money by visiting short links and submitting codes.\n\n💰 Use /shortener to begin!\n💼 Use /balance to check earnings.\n🏦 Use /withdraw to cash out.",
+        caption=(
+            "<b>🎉 Welcome to the Earning Bot!</b>\n\n"
+            "Earn money by visiting short links and submitting codes.\n\n"
+            "💰 Use /shortener to get your earning link.\n"
+            "💼 Use /balance to check your earnings.\n"
+            "🏦 Use /withdraw to cash out.\n\n"
+            "Enjoy!"
+        ),
         reply_markup=main_buttons(),
         parse_mode=ParseMode.HTML
     )
 
-# --- CALLBACK QUERY HANDLER ---
-
+# --- CallbackQuery handler for buttons ---
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -88,18 +95,23 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "close":
         await query.message.delete()
     elif query.data == "back":
-        # Show main start buttons with start image & caption
         await query.message.edit_media(
             media=InputMediaPhoto(START_IMAGE),
             reply_markup=main_buttons(),
-            caption="<b>🎉 Welcome back!</b>\nEarn money by visiting short links and submitting codes.\n\n💰 Use /shortener to begin!\n💼 Use /balance to check earnings.\n🏦 Use /withdraw to cash out.",
+            caption=(
+                "<b>🎉 Welcome back!</b>\n\n"
+                "Earn money by visiting short links and submitting codes.\n\n"
+                "💰 Use /shortener to get your earning link.\n"
+                "💼 Use /balance to check your earnings.\n"
+                "🏦 Use /withdraw to cash out."
+            ),
             parse_mode=ParseMode.HTML
         )
     elif query.data == "about":
         await query.message.edit_media(
             media=InputMediaPhoto(ABOUT_IMAGE),
             caption=(
-                "<b>📢 About This Bot</b>\n"
+                "<b>📢 About This Bot</b>\n\n"
                 "Earn money by completing short tasks like visiting shortened links.\n"
                 "Invite friends and support our channels.\n\n"
                 "<i>Use the buttons below to navigate.</i>"
@@ -123,63 +135,59 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode=ParseMode.HTML
         )
 
-# --- SHORTENER COMMAND ---
-
+# --- /shortener command ---
 async def shortener(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = get_user(user_id)
 
-    # Use a fixed long URL here, or get from user input
-    long_url = "https://example.com/earn-money"  # You can customize this
+    long_url = "https://example.com/earn-money"  # Change this to your actual URL
 
-    # Generate LinkCent short link
-    import requests
+    # Generate short link with linkcents.com API
     try:
-        api_url = f"{LINKCENT_BASE_URL}{long_url}"
+        api_url = LINKCENT_API_BASE.format(LINKCENT_API_KEY, long_url)
         resp = requests.get(api_url, timeout=10)
         resp_json = resp.json()
+
         if resp.status_code == 200 and 'shorturl' in resp_json:
             short_url = resp_json['shorturl']
         else:
             short_url = None
-    except Exception as e:
+    except Exception:
         short_url = None
 
     if not short_url:
-        await update.message.reply_text("⚠️ Sorry, could not generate short link right now. Try again later.")
+        await update.message.reply_text("⚠️ Could not generate short link now. Try again later.")
         return
 
     # Generate a random 6-digit code for user
     code = str(random.randint(100000, 999999))
 
-    # Save the code to prevent reuse
-    if not is_code_used(code):
+    # Prevent code reuse
+    if is_code_used(code):
         add_code(code)
 
-    # Save user last code, last link if needed
     user_data['last_code'] = code
     user_data['last_link'] = short_url
     update_user(user_id, user_data)
 
+    text = (
+        f"🔗 Here is your earning link:\n{short_url}\n\n"
+        f"📝 After visiting, send me the code you get to earn ₹0.01.\n"
+        f"Your code: <b>{code}</b>"
+    )
+
     if user_id == ADMIN_ID:
-        await update.message.reply_text(f"🔗 Short Link: {short_url}\n🔑 Your code: {code}")
-    else:
-        await update.message.reply_text(
-            f"🔗 Here is your earning link:\n{short_url}\n\n"
-            f"📝 After visiting, send me the code to earn ₹0.01.\n"
-            f"Your code: <b>{code}</b>",
-            parse_mode=ParseMode.HTML
-        )
+        text += "\n\n(Admin view) Use /users to see user stats."
 
-# --- BALANCE COMMAND ---
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
 
+# --- /balance command ---
 async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = get_user(user_id)
     await update.message.reply_text(f"💰 Your current balance is ₹{user_data['balance']:.2f}")
 
-# --- WITHDRAW CONVERSATION ---
-
+# --- /withdraw command with conversation ---
 async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = get_user(user_id)
@@ -207,13 +215,12 @@ async def receive_upi(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text("✅ Withdrawal request received! Payment will be processed within 24 hours.")
-    # Reset user balance
+
     user_data['balance'] = 0.0
     update_user(user_id, user_data)
     return ConversationHandler.END
 
-# --- HANDLE CODE SUBMISSION ---
-
+# --- Handle submitted codes ---
 async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     code = update.message.text.strip()
     user_id = update.effective_user.id
@@ -229,8 +236,31 @@ async def handle_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     update_user(user_id, user_data)
     await update.message.reply_text("✅ Code accepted! You earned ₹0.01.")
 
-# --- MAIN ---
+# --- Admin command: /users ---
+async def users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id != ADMIN_ID:
+        await update.message.reply_text("❌ You are not authorized to use this command.")
+        return
 
+    users = load_json(USERS_FILE)
+    total_users = len(users)
+    if total_users == 0:
+        await update.message.reply_text("No users found.")
+        return
+
+    # Sort top 5 users by balance descending
+    sorted_users = sorted(users.items(), key=lambda x: x[1].get("balance", 0), reverse=True)
+    top5 = sorted_users[:5]
+
+    text = f"👥 Total users: {total_users}\n\n<b>Top 5 users by balance:</b>\n"
+    for i, (uid, data) in enumerate(top5, 1):
+        bal = data.get("balance", 0.0)
+        text += f"{i}. User ID: {uid} — ₹{bal:.2f}\n"
+
+    await update.message.reply_text(text, parse_mode=ParseMode.HTML)
+
+# --- Main ---
 if __name__ == "__main__":
     app = Application.builder().token(TOKEN).build()
 
@@ -238,6 +268,7 @@ if __name__ == "__main__":
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(CommandHandler("shortener", shortener))
     app.add_handler(CommandHandler("balance", balance))
+    app.add_handler(CommandHandler("users", users))  # admin only
 
     withdraw_conv = ConversationHandler(
         entry_points=[CommandHandler("withdraw", withdraw)],
@@ -248,5 +279,5 @@ if __name__ == "__main__":
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_code))
 
-    print("Bot started with polling...")
+    print("Bot started, polling...")
     app.run_polling()
