@@ -349,7 +349,7 @@ async def refer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     # Replace 'YourBotUsername' with your actual bot username
-    ref_link = f"https://t.me/YourBotUsername?start={user_id}"
+    ref_link = f"https://t.me/@animw_fetch_robot?start={user_id}"
     await update.message.reply_text(f"Share this referral link:\n{ref_link}\nYou earn ₹0.001 when your referrals complete shorteners.")
 
 
