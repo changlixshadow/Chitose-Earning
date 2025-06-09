@@ -1,23 +1,18 @@
-import os
-import json
-import random
-import string
-import datetime
+import os, json, random, string, datetime, requests
+from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler,
-    CallbackQueryHandler, MessageHandler, filters, ContextTypes
+    ApplicationBuilder, CommandHandler, MessageHandler,
+    CallbackQueryHandler, filters, ContextTypes
 )
-from shortener_api import create_short_link  # ✅ Replace with actual implementation
 
 # --- CONFIG ---
 BOT_TOKEN = "8006836827:AAERFD1tDpBDJhvKm_AHy20uSAzZdoRwbZc"
 BOT_USERNAME = "anime_fetch_robot"
+GROUP_ID = -1002453946876  # Private channel
 ADMIN_IDS = [5759232282]
-GROUP_ID = -1002453946876  # ✅ Private channel for posting codes
 DAILY_LIMIT = 5
 
-# --- STORAGE FILES ---
 USERS_FILE = "users.json"
 CODES_FILE = "codes.json"
 
@@ -26,17 +21,10 @@ for f in [USERS_FILE, CODES_FILE]:
         with open(f, "w") as wr:
             json.dump({}, wr)
 
-# --- UTILITIES ---
-def load_json(path):
-    with open(path, "r") as f:
-        return json.load(f)
+def load_json(p): return json.load(open(p))
+def save_json(p, d): open(p, "w").write(json.dumps(d, indent=2))
 
-def save_json(path, data):
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-
-def gen_code():
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+def gen_code(): return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
 def get_user(uid):
     users = load_json(USERS_FILE)
@@ -50,9 +38,7 @@ def get_user(uid):
     })
     today = datetime.date.today().isoformat()
     if u["today"] != today:
-        u["today"] = today
-        u["count"] = 0
-        u["pending_code"] = None
+        u["today"], u["count"], u["pending_code"] = today, 0, None
     save_json(USERS_FILE, users)
     return u
 
@@ -63,143 +49,140 @@ def add_balance(uid, amt, note):
     u["history"].append(f"+₹{amt:.3f} {note}")
     save_json(USERS_FILE, users)
 
+def create_short_link(url):
+    # Replace with your actual shortener API call
+    # E.g. requests.get(...) and return shortened URL
+    return url
+
+app = Flask(__name__)
+application = ApplicationBuilder().token(BOT_TOKEN).build()
+
 # --- /start ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     u = get_user(uid)
     args = context.args
-    if args:
+    if args and u["referral"] is None:
         ref = args[0]
-        if ref != str(uid) and u["referral"] is None:
+        if ref != str(uid):
             u["referral"] = ref
             save_json(USERS_FILE, load_json(USERS_FILE))
 
     kb = [
-        [InlineKeyboardButton("🎯 Mission", callback_data="m")],
-        [InlineKeyboardButton("👥 Refer", callback_data="r"),
-         InlineKeyboardButton("💰 Balance", callback_data="b")],
-        [InlineKeyboardButton("📤 Withdraw", callback_data="w")]
+        [InlineKeyboardButton("🎯 Shortener", callback_data="cmd_short")],
+        [InlineKeyboardButton("👥 Refer", callback_data="cmd_refer"),
+         InlineKeyboardButton("💰 Balance", callback_data="cmd_balance")],
+        [InlineKeyboardButton("📤 Withdraw", callback_data="cmd_withdraw")],
     ]
     await update.message.reply_photo(
         photo="https://telegra.ph/file/050a20dace942a60220c0-6afbc023e43fad29c7.jpg",
-        caption="Welcome! Earn ₹0.01 per mission.\nUse /shortener to start!",
-        reply_markup=InlineKeyboardMarkup(kb)
+        caption="🚀 *Welcome to Chitose Earning Bot!*\nEarn ₹0.01 per shortener task.",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(kb),
     )
 
-# --- /shortener ---
-async def shortener(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# --- /shortener via button or command ---
+async def cmd_short(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = update.effective_user.id
     u = get_user(uid)
-
     if u["count"] >= DAILY_LIMIT:
-        return await update.message.reply_text("❌ Daily mission limit reached.")
-
-    if u.get("pending_code"):
+        return await update.message.reply_text("❌ Daily limit reached.")
+    if u["pending_code"]:
         code = u["pending_code"]
         codes = load_json(CODES_FILE)
-        if not codes.get(code, {}).get("used", False):
-            short_url = codes[code]["short_url"]
-            return await update.message.reply_text(f"🔗 {short_url}\nComplete the ads and return with your code.")
-
+        if not codes[code]["used"]:
+            return await update.message.reply_text(
+                f"🔗 Task pending! Use link:\n{codes[code]['url']}"
+            )
     code = gen_code()
-    short_url = create_short_link(code)  # replace with actual shortening
-
-    # Post code to group privately
-    await context.bot.send_message(
+    # Post code in private channel
+    msg = await context.bot.send_message(
         chat_id=GROUP_ID,
-        text=f"✅ Code for {uid}: `{code}`",
+        text=f"🎁 Code for `{uid}`: `{code}`",
         parse_mode="Markdown"
     )
-
-    # Save code info
+    task_link = f"https://t.me/{BOT_USERNAME}?start={code}"
+    short = create_short_link(task_link)
     codes = load_json(CODES_FILE)
-    codes[code] = {"uid": uid, "used": False, "short_url": short_url}
+    codes[code] = {"uid": uid, "used": False, "url": short}
     save_json(CODES_FILE, codes)
+    u["pending_code"], u["count"] = code, u["count"] + 1
+    save_json(USERS_FILE, load_json(USERS_FILE))
+    return await update.message.reply_text(
+        f"🔗 Here’s your short link:\n{short}\n🔁 Complete it and come back to redeem."
+    )
 
-    u["pending_code"] = code
-    u["count"] += 1
-    users = load_json(USERS_FILE)
-    users[str(uid)] = u
-    save_json(USERS_FILE, users)
+# --- /verify command ---
+async def verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        return await update.message.reply_text("Usage: /verify <CODE>")
+    code = context.args[0].strip().upper()
+    codes = load_json(CODES_FILE)
+    if code not in codes:
+        return await update.message.reply_text("❌ Invalid code.")
+    data = codes[code]
+    if data["used"]:
+        return await update.message.reply_text("⚠️ Code already used.")
+    uid = update.effective_user.id
+    if data["uid"] != uid:
+        return await update.message.reply_text("🚫 Not your code.")
+    # Mark as used
+    data["used"] = True
+    save_json(CODES_FILE, codes)
+    u = get_user(uid)
+    u["pending_code"] = None
+    save_json(USERS_FILE, load_json(USERS_FILE))
+    add_balance(uid, 0.01, "Mission completed")
+    if u["referral"]:
+        add_balance(int(u["referral"]), 0.01, "Referral")
+        add_balance(int(u["referral"]), 0.001, "Ref-Watch")
+    return await update.message.reply_text(
+        "✅ Successfully claimed ₹0.01!"
+    )
 
-    await update.message.reply_text(f"🔗 {short_url}\nComplete the ads and come back to submit the code.")
-
-# --- Callback Handler ---
+# --- Callback Buttons ---
 async def cb_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     q = update.callback_query
     await q.answer()
-    uid = q.from_user.id
-    u = get_user(uid)
-
-    if q.data == "m":
-        await shortener(q, context)
-
-    elif q.data == "r":
-        await q.message.reply_text(
-            f"👥 Invite:\nhttps://t.me/{BOT_USERNAME}?start={uid}"
+    cmd = q.data
+    if cmd == "cmd_short":
+        return await cmd_short(update, context)
+    if cmd == "cmd_balance":
+        bal = get_user(q.from_user.id)["balance"]
+        return await q.message.reply_text(f"💰 Balance: ₹{bal:.2f}")
+    if cmd == "cmd_refer":
+        uid = q.from_user.id
+        return await q.message.reply_text(
+            f"🔗 Invite Link:\nhttps://t.me/{BOT_USERNAME}?start={uid}",
+            parse_mode="Markdown"
         )
+    if cmd == "cmd_withdraw":
+        return await q.message.reply_text("📤 Send `<UPI_ID> <Amount>` (₹1-10)")
 
-    elif q.data == "b":
-        bal = u["balance"]
-        await q.message.reply_text(f"💰 Balance: ₹{bal:.3f}")
-
-    elif q.data == "w":
-        await q.message.reply_text("Send like this: `<UPI_ID> <Amount>` (₹1‑10)", parse_mode="Markdown")
-
-# --- Text Handler (Code / UPI) ---
+# --- Catch All Text for /verify, withdrawal ---
 async def text_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.strip()
-    uid = update.effective_user.id
-
-    if " " in text:  # Withdrawal
+    txt = update.message.text.strip()
+    if ' ' in txt:
+        upi, amt = txt.split(None, 1)
         try:
-            upi, amt = text.split(maxsplit=1)
             amt = float(amt)
         except:
             return
-        u = get_user(uid)
+        u = get_user(update.effective_user.id)
         if 1 <= amt <= 10 and u["balance"] >= amt:
-            add_balance(uid, -amt, f"Withdraw to {upi}")
-            await update.message.reply_text("💸 Withdrawal request received!")
+            add_balance(update.effective_user.id, -amt, f"Withdraw to {upi}")
+            await update.message.reply_text("💸 Withdrawal requested!")
             for aid in ADMIN_IDS:
-                await context.bot.send_message(aid, f"User {uid} requested ₹{amt:.2f} to {upi}")
+                await context.bot.send_message(aid, f"📤 User {update.effective_user.id} withdraw ₹{amt} to {upi}")
         return
+    # ignore other chat
 
-    # Code submission
-    text = text.upper()
-    if len(text) == 6 and text.isalnum():
-        codes = load_json(CODES_FILE)
-        if text not in codes:
-            return await update.message.reply_text("❌ Invalid code.")
-        d = codes[text]
-        if d["used"]:
-            return await update.message.reply_text("⚠️ Code already used.")
-        if d["uid"] != uid:
-            return await update.message.reply_text("🚫 Not your code.")
+# --- Setup ---
+application.add_handler(CommandHandler("start", start))
+application.add_handler(CommandHandler("shortener", cmd_short))
+application.add_handler(CommandHandler("verify", verify))
+application.add_handler(CallbackQueryHandler(cb_handler))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
-        d["used"] = True
-        save_json(CODES_FILE, codes)
-
-        u = get_user(uid)
-        u["pending_code"] = None
-        save_json(USERS_FILE, load_json(USERS_FILE))
-
-        add_balance(uid, 0.01, "Mission")
-
-        # Referral bonus
-        ref = u.get("referral")
-        if ref:
-            add_balance(int(ref), 0.01, "Referral")
-            add_balance(int(ref), 0.001, "Ref-Watch")
-
-        await update.message.reply_text("✅ ₹0.01 added!")
-
-# --- MAIN ---
-if __name__ == "__main__":
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("shortener", shortener))
-    app.add_handler(CallbackQueryHandler(cb_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
-    print("Bot running...")
-    app.run_polling()
+# Use polling for now
+application.run_polling()
