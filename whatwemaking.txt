@@ -1,0 +1,42 @@
+i want to create a telegram bot who can help me to earn money i have no many idea but you check this what i want....
+
+
+is bot me ye commands honge......
+/shortener :- isse me chata hu jab koi user iska use kare to use simple ek url milna chaiye shortener se aur jab wo user uspe click krke shortener ko cmplete krta h 
+by watching ads or something else then use ek code milna chaiye ya kuch aur like jisse verify ho sake ki usne ispe click krke ye shortenerpura complete kra h 
+jese he wo shortener command de to use url mile aur kuch verify krne ka system ager kisi code se verify hoga to wo code ek baar use ho gya to kisi aur ko again wo code nhi milna chaoiye us shortener me aur wo code bs ek baar claim ho sakta h again claim krega code dalke to claimable likha ayega aur ager tum kuch aur feature lagaoge to btana ki kesa feature lgane jaa rahe ho or tell me how can i improve this jese he wo shortener verify hota h uske account me 0.01rs credit ho jayega 
+
+/balance :- isse simple check kr sakte h ki user ne kitna ab tak earn kra 
+
+/start :- isse ek start msg ayega jisme details likhi hongi aur ek media ka url dunga me wo media aur uske uper caption likh dena aur uske niche button hoga about isme sab likha hoga ki ye ahi 1.1 version iska next update baad me ayega will be soon  and help me kis command se kya hota h simple ye likha hoga aur ager koi esa command ho jo srif admin use kr sakta h to use bhi wha likh dena  and kis se kya hota h short me likh dena and niche close ka button jisse wo start wala msg hatjayega or delete ho jayega.
+/broadcast :- isse sabhi ko msg bhej sakte h ek baar me admin can use only 
+/users or /stats :- to see how many users are using this bot 
+/withdraw :- isse simple user withdraw ke liye lga sakta h 2rs se jyada 50rs se kam ke bich me lagega aur ek din me ek baar withdraw kr sakte h ager extra baar lgayuega to likha ayega wait for how many hour left.... aur upi payment hoga to user apna upi dalega aur jab withdrawlga dega to mere pass ek group hoga wha msg ayega ki user ne wiothdraw pr lgaya h jitne rs lagaye h wo dikhayega uska username or upi fir mere pass jab group me ye msg ayega to me use telegram bot se notify kr sakta hu ki tumhara withdraw success ho gya 
+ /notify username ese daal ke use notify kr saku ek user ko  admin can use this
+ /refer :- isse user ko uski refer link milegi wo users ko refer kr sakta h bs users refer tab he count hoga jab jise refer kra h wo today shortener mission complete krta h to aur wo ek shortener complete krega to jisne use refer kra tha uske account me 0.001rs credit hoga aur likha ayega he completed 1 shortener  you acheived 0.01rs .... 
+
+
+
+
+jo tum code doge usme sabhi code ke pass likh dena ki kis code se kya hota h 
+aur kis json me kya likhna h ye bhi btana 
+
+
+
+ a me btata hu kese kya work krega how you have to do....
+ shortener ka system esa hoga ki ager mene 10 shortener api set kr diye to user /shortener krega to use line se har ek sghortener se url milega aur jab 10 sghortener complete kr dega to likha ayega wait for 18 hour jitne hour left h utne dikhayega 24 hour me 10 use kr sakte h ager mene 1 shortener api lga rakha h to user ko bhi 1 he task milega krne ko samjha?
+ codes random generate hoke milenege ager code verfification h to ek user ek  baar claim kr sakta h aur kya batau sab uper he bta diya mene 
+ bs a details de rha hu 
+
+
+ start image url :- https://telegra.ph/file/050a20dace942a60220c0-6afbc023e43fad29c7.jpg
+ about image url :- https://telegra.ph/file/9d18345731db88fff4f8c-d2b3920631195c5747.jpg
+ help image url :- https://telegra.ph/file/e6ec31fc792d072da2b7e-54e7c7d4c5651823b3.jpg
+
+ bot token :- 8006836827:AAERFD1tDpBDJhvKm_AHy20uSAzZdoRwbZc
+ admin id :- 5759232282
+ group id :- @gameshubreal
+
+
+abhi 1 shortenerurl de rha hu checking ke liye baad me aur add kr dunga
+https://linkcents.com :- a3dede8bbc12f4bd0afd61cf1ac691f3545d5faf 
